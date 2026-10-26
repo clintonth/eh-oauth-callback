@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>OAuth Callback</title>
+<style>
+  :root { --bg:#f4f6f9; --card:#fff; --ink:#212121; --muted:#636466; --navy:#0E417A; --accent:#F08C21; --line:#e3e8ef; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#12161d; --card:#1a1f28; --ink:#e8ecf2; --muted:#9aa4b2; --navy:#5b9bd5; --line:#2a313d; } }
+  :root[data-theme="dark"] { --bg:#12161d; --card:#1a1f28; --ink:#e8ecf2; --muted:#9aa4b2; --navy:#5b9bd5; --line:#2a313d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:28px; max-width:620px; width:100%; }
+  h1 { font-size:19px; margin:0 0 4px; color:var(--navy); }
+  p { color:var(--muted); margin:0 0 18px; font-size:14px; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .code { background:var(--bg); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:6px; padding:14px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px; word-break:break-all; user-select:all; margin-bottom:14px; }
+  button { background:var(--navy); color:#fff; border:0; border-radius:6px;
+    padding:10px 16px; font-size:14px; cursor:pointer; font-weight:600; }
+  button:hover { opacity:.9; }
+  .err { border-left-color:#c0392b; }
+  .hint { font-size:13px; color:var(--muted); margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1 id="h">Authorisation code</h1>
+  <p id="sub">Hand this back to the terminal to finish signing in.</p>
+  <div class="code" id="out">Reading…</div>
+  <button id="copy">Copy code</button>
+  <div class="hint">This page is static. The code stays in your browser and is never sent anywhere.
+  It is single-use and expires in minutes.</div>
+</div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var code = q.get("code"), err = q.get("error"), out = document.getElementById("out");
+
+  if (err) {
+    document.getElementById("h").textContent = "Authorisation failed";
+    document.getElementById("sub").textContent = q.get("error_description") || "Employment Hero returned an error.";
+    out.className = "code err";
+    out.textContent = err;
+    document.getElementById("copy").style.display = "none";
+    return;
+  }
+  if (!code) {
+    out.textContent = "No code in the URL. Start the flow again from the terminal.";
+    document.getElementById("copy").style.display = "none";
+    return;
+  }
+
+  out.textContent = code;
+
+  // Try to hand the code straight back to the local listener so there is nothing to paste.
+  // Navigation to a loopback address is allowed from an HTTPS page; if it fails, the code
+  // above is still on screen to copy manually.
+  var port = q.get("state") && /^port:(\d+)$/.test(q.get("state"))
+           ? q.get("state").split(":")[1] : "8911";
+  var local = "http://127.0.0.1:" + port + "/callback" + location.search;
+  var img = new Image();
+  img.onload = img.onerror = function () {};
+  fetch(local, { mode: "no-cors" }).catch(function () {});
+
+  document.getElementById("copy").addEventListener("click", function () {
+    navigator.clipboard.writeText(code).then(function () {
+      var b = document.getElementById("copy");
+      b.textContent = "Copied";
+      setTimeout(function () { b.textContent = "Copy code"; }, 1600);
+    });
+  });
+})();
+</script>
+</body>
+</html>
